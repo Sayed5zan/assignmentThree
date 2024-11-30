@@ -2,70 +2,82 @@ const express = require('express');
 const sqlite = require('sqlite');
 const sqlite3 = require('sqlite3');
 const path = require('path');
+const fs = require("fs");
 
 const app = express();
-const PORT = 3000;
-
 app.use(express.json());
 
 //Creating Databaase
 let db;
+let isDbReady = false; 
 
 (async () => {
-  console.log("opening database");
-  const dbPath = path.join(__dirname, "data", "database.db");
+  try {
+    const sourceDbPath = path.join(__dirname, "data", "database.db");
+    const writableDbPath = path.join("/tmp", "database.db");
 
-  console.log("Database path:", dbPath); // Log to confirm the correct path
-  db = await sqlite.open({
-  filename: dbPath,
-  driver: sqlite3.Database,
-});
+    if (!fs.existsSync(writableDbPath)) {
+      console.log("Copying database to /tmp...");
+      fs.copyFileSync(sourceDbPath, writableDbPath);
+    }
+
+    db = await sqlite.open({
+      filename: writableDbPath,
+      driver: sqlite3.Database,
+    });
 
 
-  console.log("Dropping table and recreating database table");
-
- await db.exec(`DROP TABLE IF EXISTS greeting`);
-  await db.exec(`
-        CREATE TABLE IF NOT EXISTS greeting (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            timeofDay TEXT NOT NULL,
-            language TEXT NOT NULL,
-            greetingMessage TEXT NOT NULL,
-            tone TEXT NOT NULL
-        )
+    await db.exec(`
+      CREATE TABLE IF NOT EXISTS greeting (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        timeofDay TEXT NOT NULL,
+        language TEXT NOT NULL,
+        greetingMessage TEXT NOT NULL,
+        tone TEXT NOT NULL
+      )
     `);
 
-  console.log("inserting data into datbase");
-  const greetings = [
-    { timeofDay: "Morning", language: "English", message: "Good Morning", tone: "Formal" },
-    { timeofDay: "Afternoon", language: "English", message: "Good Afternoon", tone: "Formal" },
-    { timeofDay: "Evening", language: "English", message: "Good Evening", tone: "Formal" },
-    { timeofDay: "Morning", language: "French", message: "Bonjour", tone: "Formal" },
-    { timeofDay: "Afternoon", language: "French", message: "Bon après-midi", tone: "Formal" },
-    { timeofDay: "Evening", language: "French", message: "Bonsoir", tone: "Formal" },
-    { timeofDay: "Morning", language: "Spanish", message: "Buenos días", tone: "Formal" },
-    { timeofDay: "Afternoon", language: "Spanish", message: "Buenas tardes", tone: "Formal" },
-    { timeofDay: "Evening", language: "Spanish", message: "Buenas noches", tone: "Formal" },
-    { timeofDay: "Morning", language: "English", message: "Hey, good morning!", tone: "Casual" },
-    { timeofDay: "Afternoon", language: "English", message: "Hey, good afternoon!", tone: "Casual" },
-    { timeofDay: "Evening", language: "English", message: "Hey, good evening!", tone: "Casual" },
-    { timeofDay: "Morning", language: "French", message: "Salut, bonjour!", tone: "Casual" },
-    { timeofDay: "Afternoon", language: "French", message: "Salut, bon après-midi!", tone: "Casual" },
-    { timeofDay: "Evening", language: "French", message: "Salut, bonsoir!", tone: "Casual" },
-    { timeofDay: "Morning", language: "Spanish", message: "Hola, buenos días!", tone: "Casual" },
-    { timeofDay: "Afternoon", language: "Spanish", message: "Hola, buenas tardes!", tone: "Casual" },
-    { timeofDay: "Evening", language: "Spanish", message: "Hola, buenas noches!", tone: "Casual" }
-  ];
-  
-  // Insert the values into the database
-  for (const greeting of greetings) {
-    const { timeofDay, language, message, tone } = greeting;
-    await db.run(
-      `INSERT INTO greeting (timeofDay, language, greetingMessage, tone) VALUES (?, ?, ?, ?)`,
-      [timeofDay, language, message, tone]
-    );
+    console.log("Checking if data needs to be inserted...");
+    const rowCount = await db.get("SELECT COUNT(*) AS count FROM greeting");
+    if (rowCount.count === 0) {
+      console.log("Inserting initial data...");
+      const greetings = [
+        { timeofDay: "Morning", language: "English", message: "Good Morning", tone: "Formal" },
+        { timeofDay: "Afternoon", language: "English", message: "Good Afternoon", tone: "Formal" },
+        { timeofDay: "Evening", language: "English", message: "Good Evening", tone: "Formal" },
+        { timeofDay: "Morning", language: "French", message: "Bonjour", tone: "Formal" },
+        { timeofDay: "Afternoon", language: "French", message: "Bon après-midi", tone: "Formal" },
+        { timeofDay: "Evening", language: "French", message: "Bonsoir", tone: "Formal" },
+        { timeofDay: "Morning", language: "Spanish", message: "Buenos días", tone: "Formal" },
+        { timeofDay: "Afternoon", language: "Spanish", message: "Buenas tardes", tone: "Formal" },
+        { timeofDay: "Evening", language: "Spanish", message: "Buenas noches", tone: "Formal" },
+        { timeofDay: "Morning", language: "English", message: "Hey, good morning!", tone: "Casual" },
+        { timeofDay: "Afternoon", language: "English", message: "Hey, good afternoon!", tone: "Casual" },
+        { timeofDay: "Evening", language: "English", message: "Hey, good evening!", tone: "Casual" },
+        { timeofDay: "Morning", language: "French", message: "Salut, bonjour!", tone: "Casual" },
+        { timeofDay: "Afternoon", language: "French", message: "Salut, bon après-midi!", tone: "Casual" },
+        { timeofDay: "Evening", language: "French", message: "Salut, bonsoir!", tone: "Casual" },
+        { timeofDay: "Morning", language: "Spanish", message: "Hola, buenos días!", tone: "Casual" },
+        { timeofDay: "Afternoon", language: "Spanish", message: "Hola, buenas tardes!", tone: "Casual" },
+        { timeofDay: "Evening", language: "Spanish", message: "Hola, buenas noches!", tone: "Casual" }
+      ];
+
+      for (const greeting of greetings) {
+        const { timeofDay, language, message, tone } = greeting;
+        await db.run(
+          `INSERT INTO greeting (timeofDay, language, greetingMessage, tone) VALUES (?, ?, ?, ?)`,
+          [timeofDay, language, message, tone]
+        );
+      }
+    } else {
+      console.log("Data already exists in 'greeting' table.");
+    }
+
+    isDbReady = true; 
+    console.log("Database initialization complete.");
+  } catch (error) {
+    console.error("Error initializing database:", error);
   }
-  
 })();
 
 
@@ -143,7 +155,3 @@ class GreetingResponse{
 }
 module.exports= GreetingResponse;
 
-// Start the server
-app.listen(PORT, () => {
-  console.log(`Server running on http://localhost:${PORT}`);
-});
