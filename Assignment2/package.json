@@ -12,9 +12,12 @@
   "description": "",
   "dependencies": {
     "express": "^4.21.1",
-    "fs": "^0.0.1-security",
-    "path": "^0.12.7",
     "sqlite": "^5.1.1",
-    "sqlite3": "^5.1.7"
+    "sqlite3": "^5.1.7",
+    "path": "^0.12.7",
+    "vercel": "^39.1.1"
+  },
+  "engines": {
+    "node": "18.x"
   }
 }

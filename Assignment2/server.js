@@ -7,7 +7,7 @@ const fs = require("fs");
 const app = express();
 app.use(express.json());
 
-//Creating Databaase
+//Creating Database
 let db;
 let isDbReady = false; 
 
@@ -96,7 +96,7 @@ app.post('/api/greet', async (req, res) => {
     try {
       
       const greeting = await db.get(
-        'SELECT * FROM greetings WHERE timeOfDay = ? AND language = ? AND tone = ?',
+        'SELECT * FROM greeting WHERE timeOfDay = ? AND language = ? AND tone = ?',
         [timeOfDay, language, tone]
       );
 
@@ -117,7 +117,7 @@ app.post('/api/greet', async (req, res) => {
 //Get all Time of Day
 app.get('/api/timesOfDay', async (req, res) => {
     try {
-      const timesOfDay = await db.all('SELECT DISTINCT timeOfDay FROM greetings');
+      const timesOfDay = await db.all('SELECT DISTINCT timeOfDay FROM greeting');
       res.json({ message: 'success', data: timesOfDay.map(row => row.timeOfDay) });
     } catch (error) {
       res.status(500).json({ error: error.message });
@@ -127,31 +127,31 @@ app.get('/api/timesOfDay', async (req, res) => {
 //Get all Supported languages
 app.get('/api/languages', async (req, res) => {
     try {
-      const languages = await db.all('SELECT DISTINCT language FROM greetings');
+      const languages = await db.all('SELECT DISTINCT language FROM greeting');
       res.json({ message: 'success', data: languages.map(row => row.language) });
     } catch (error) {
       res.status(500).json({ error: error.message });
     }
 });
 
-
-//Define API MODELS
-class GreetingRequest{
+// Define API MODELS
+class GreetingRequest {
     constructor(timeOfDay, language, tone) {
         this.timeOfDay = timeOfDay;
         this.language = language;
         this.tone = tone;
-      }
-      isValid() {
-        return this.timeOfDay && this.language && this.tone;
-      }
+    }
 }
-module.exports = GreetingRequest;
 
-class GreetingResponse{
+class GreetingResponse {
     constructor(greetingMessage) {
-    this.greetingMessage = greetingMessage;
-  }
+        this.greetingMessage = greetingMessage;
+    }
 }
-module.exports= GreetingResponse;
 
+// Correct way to export multiple classes and the app
+module.exports = {
+    GreetingRequest,
+    GreetingResponse,
+    app
+};
